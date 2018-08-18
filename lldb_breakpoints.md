@@ -10,7 +10,6 @@ If you need 70+ functions from an object, I feel something is running amock.
 
 ### Breakpoint (Breakpoint/Breakpoint.h)
 
-
 An LLDB breakpoint has 4 parts:
 - A filter
 - A resolver,
@@ -99,13 +98,3 @@ Most common usage will be ther DWARF access. DWARF defines it's own register
 numbering scheme which has to be mapped for each architecture.
 
 This class also has an API for PC, SP, Hardware breakpoints, etc.
-
-
-
-
-
-
-
-
-
-
