@@ -54,9 +54,8 @@ Simple grab-bag of configurations.
 
 ## Register Implementation in LLDB
 
-Actual architecture implementations reside in `source/Plugins/Process/Utility/*`.
-They have a lot of similar classes for <OS>/<ARCH> combinations.
-They rely on inheritance interfaces to abstract the arch specifics.
+Of course, they implement their own ptrace wrapper and wrapper for the Linux
+context:
 
 ### RegisterSet (lldb-private-types.h)
 
@@ -98,3 +97,116 @@ Most common usage will be ther DWARF access. DWARF defines it's own register
 numbering scheme which has to be mapped for each architecture.
 
 This class also has an API for PC, SP, Hardware breakpoints, etc.
+
+## Process/Thread architecture
+
+The main interface is Process (Target/Process.h). It's *huge* (the header is over
+3200 lines long). This is a big interface for particular processes to implement.
+
+It roughly divides into UNIX/Linux vs Windows:
+source/Plugins/Process/gdb-remote/ProcessGDBRemote.h
+source/Plugins/Process/Windows/Common/ProcessWindows.h
+
+### Thread (Target/Thread.h)
+
+Generic wrapper over a thread. Holds both the pid and tid.
+The interface is fairly straightforward: SP, StackFrame.
+
+Contains something called the "ThreadPlan"
+
+#### ThreadPlan (Target/ThreadPlan.h)
+
+ThreadPlan is actually a pure virtual interface.
+Represents the behaviours that a particular thread can have upon resumen (and
+possibly other states).
+You can push plans into the "Plan Stack". Each plan within the stack
+can have many actions and the top one is the current, but it can refer
+to higher ones for data.
+####
+
+## Server Side -------------------------------------------------------------------------------------
+
+### NativeProcessLinux (Plugins/Linux/NativeProcessLinux.h)
+
+This is a wrapper over the actual linux process, so this (or most probably a
+derived type) is the interface that the server uses to deal with the actual
+process.
+
+Actually, this class will start the underlying process upon construction.
+Eventually, the interface if Ptrace, over which they created a wrapper.
+
+### NativeThreadProtocol (Host/common/NativeThreadProtocol.h)
+
+Represents an overarching interface for dealing with "native" Threads in any target.
+This is to be specialized by
+
+
+
+### NativeRegisterContext (Plugins/Process/<OS>/*)
+
+Implements the NativeRegisterContext (Host/common/NativeRegisterContext.h),
+which seems to be used by the NativeThreadProtocol
+
+This is very similar to the Utility implementations residing in
+`source/Plugins/Process/Utility/*`.
+They have a lot of similar classes for <OS>/<ARCH> combinations.
+They rely on inheritance interfaces to abstract the arch specifics.
+
+The hardware registers are also read through ptrace
+
+
+
+The resume process goes something like this
+
+### Process resume workflow
+
+#### GDB Client side
+
+Process::Resume                                 [ Target/Process.h ]
+  Process::PrivateResume                        [ Target/Process.h ]
+    Process::WillResume <<VIRTUAL>>             [ Target/Process.h ]
+      ProcessGDBRemote::WillResume              [ Plugins/Process/gdb-remote/ProcessGDBRemote.h ]
+        // Justclears it's thread id statuse
+      ThreadList::WillResume                      [ Target/ThreadList.h ]
+        ∀ contained thread:
+        // Does a lot of bookkepping to see if some thread wants to stop another,
+        // deciding which will eventually actually run and if they want to run alone.
+        // Seems overly complicated at a glance.
+        // In between, calls the important function
+        Thread::SetupForResume                    [ Target/Thread.h ]
+          // Checks if the thread is over a breakpoint and schedules
+          // a StepOver plan if needed.
+      // If a thread wants to run alone, don't resume the process (not exactly
+      // sure what that means).
+      Process::RunPreResumeActions
+        // Checks and notifications
+      Process::DoResume << VIRTUAL >>
+        ProcessGDBRemote::DoResume
+          // This function is insane. Creates a string encoded "packet" that encodes
+          // everything that it wants to do and send it to the GDB client.
+          // This is hard because of the GDB protocol.
+          // Then sends it over the wire to the server.
+          [ Plugins/Process/gdb-remote/ProcessGDBRemote.h ]
+          GDBRemoteCommunicationClient::SetCurrentThreadForRun
+            // Sends an "Hc" packet
+
+#### GDB Server side
+
+[ Plugins/Process/gdb-remote/GDBRemoteCommunicationServer.h ]
+GDBRemoteCommunicationServer::GetPacketAndSendResponse
+  // Extracts the packet. There is a *ton* of packet types, they're all defined
+  // in [ Utility/StringExtractorGDBRemote.h ]. And that huge enums are in some
+  // cases categories of packets!
+  // From the packet type we get a handler, registered through
+  // `GDBRemoteCommunicationServer::RegisterPacketHandler`,
+  // which most important ones are registered through
+  // `RegisterMemberFunctionHandler` in
+  // [ Plugins/Process/gdb-remote/GDBRemoteCommunicationsServerCommon.h ], which
+  // in turns delegate again to member functions of the class
+  // GDBRemoteCommunicationServerLLGS [ same path ].
+  // We're interested in the H packets
+  GDBRemoteCommunicationServerLLGS::Handle_H
+    // Validates the packet and gets the NativeThreadProtocol, which handles the
+    // local thread.
+
+    ∀ PreResumeActionCallback -> call
