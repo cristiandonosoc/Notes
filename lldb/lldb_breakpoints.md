@@ -10,7 +10,6 @@ If you need 70+ functions from an object, I feel something is running amock.
 
 ### Breakpoint (Breakpoint/Breakpoint.h)
 
-
 An LLDB breakpoint has 4 parts:
 - A filter
 - A resolver,
@@ -210,12 +209,4 @@ GDBRemoteCommunicationServer::GetPacketAndSendResponse
     // Validates the packet and gets the NativeThreadProtocol, which handles the
     // local thread.
 
-
-
-
     ∀ PreResumeActionCallback -> call
-
-
-
-
-
