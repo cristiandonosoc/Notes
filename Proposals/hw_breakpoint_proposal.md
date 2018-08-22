@@ -5,6 +5,11 @@
 This document outlines how zxdb should implement hw breakpoints and what support
 is needed from zircon.
 
+## Questions
+
+- What does it mean to be attached?
+- When do we start saving those registers?
+
 ## Other Debuggers
 
 ### GDB
