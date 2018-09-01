@@ -14,7 +14,7 @@ Those functions are checked wrappers over ThreadDispatcher
 zx_thread_read_state                [ ABIGEN: kernel/syscalls/task.cpp ]
   ThreadDispatcher::ReadState       [ kernel/object/thread_dispatcher.cpp ]
     // Cased over the Register set, example: general registers
-    arch_get_general_regs
+    arch_get_general_regs   [ kernel/include/arch/debugger.h ]
       // This hold the actual implementation depending on the platform.
       // Will copy the information from the internal structs that hold the
       // register information into the structs defined for the debug purposes,
