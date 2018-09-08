@@ -23,3 +23,11 @@ zx_thread_read_state                [ ABIGEN: kernel/syscalls/task.cpp ]
         x86_64: kernel/arch/x86/debugger.cpp
         arm64: kernel/arch/arm64/debugger.cpp
       ]
+
+## HW registers
+
+Reading a HW breakpoint is handled like anything else:
+
+READ:   asm("mov %%dbX, %0", :"=r" (out_val));
+WRITE:  asm("mov %0, %%dbX", :"r" (in_val));
+

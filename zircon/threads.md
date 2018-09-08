@@ -36,12 +36,21 @@ Then calls final_context_switch
 
 ## final_context_switch [ kernel/kernel/sched.cpp ]
 
-Sets the current thread for the CPU
+- Sets the current thread for the CPU
+
+In x86, this writes into the GS register.
+In arm64, this writes into the TPIDR_EL1 register.
+Both write the thread pointer location.
+
 and calls the arch dependent context switch.
 
 ## arch_context_switch
 
-### arm64
+### x86
+
+arch_context_switch
+  x86_extended_register_context_switch
+    // Calls xsaves, that uses the CPU to save all the state into memory
 
 
 
